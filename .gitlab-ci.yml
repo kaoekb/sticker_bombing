@@ -21,11 +21,12 @@ build:
 test:
   stage: test
   script:
-    - pip install -r requirements.txt
-    # - pytest tests  # если у вас есть папка с тестами
-  only:
-    - main
-    - dev
+    echo "test"
+  #   - pip install -r requirements.txt
+  #   # - pytest tests  # если у вас есть папка с тестами
+  # only:
+  #   - main
+  #   - dev
 
 deploy:
   stage: deploy
