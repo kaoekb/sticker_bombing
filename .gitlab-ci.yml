@@ -5,7 +5,7 @@ stages:
 
 variables:
   DOCKER_DRIVER: overlay2
-  IMAGE_NAME: Duck-bot
+  IMAGE_NAME: Duck_bot
 
 before_script:
   - docker info
@@ -13,7 +13,7 @@ before_script:
 build:
   stage: build
   script:
-    - docker build -t Duck-bot .
+    - docker build -t Duck_bot .
   only:
     - main
     - dev
