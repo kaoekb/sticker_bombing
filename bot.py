@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 import telebot
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -44,6 +45,7 @@ def cmd_stop(message):
     global bot_enabled
     bot_enabled = False
     bot.reply_to(message, "Понял, умолк.")
+    time.sleep(10)
     bot.reply_to(message, "Пидоры :(")
     cancel_jobs()
 
