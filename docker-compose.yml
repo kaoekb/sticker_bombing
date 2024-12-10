@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  Duck_bot:
+  duck_bot:
     build:
       context: .
     # container_name: Duck_bot
