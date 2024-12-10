@@ -6,7 +6,7 @@ stages:
 build:
   stage: build
   script:
-    - docker build -t duck_bot .
+    - docker build --no-cache -t duck_bot .
 
 test:
   stage: test
