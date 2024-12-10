@@ -69,7 +69,7 @@ def schedule_jobs():
     if not scheduler_started:
         # Используем CronTrigger для задания времени
         morning_trigger = CronTrigger(hour=7, minute=0, second=0, timezone='Europe/Moscow')  # Утренний стикер
-        evening_trigger = CronTrigger(hour=20, minute=29, second=0, timezone='Europe/Moscow')  # Вечерний стикер
+        evening_trigger = CronTrigger(hour=22, minute=10, second=0, timezone='Europe/Moscow')  # Вечерний стикер
 
         # Запускаем задачи
         scheduler.add_job(send_morning_sticker, morning_trigger)
