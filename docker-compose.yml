@@ -1,0 +1,14 @@
+version: "3.8"
+
+services:
+  bot:
+    build: .
+    container_name: telegram_bot
+    restart: always
+    environment:
+      - TELEGRAM_API_TOKEN=${TELEGRAM_API_TOKEN}
+      - GROUP_CHAT_ID=${GROUP_CHAT_ID}
+    volumes:
+      - .:/app
+    ports:
+      - "5000:5000"
