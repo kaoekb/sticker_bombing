@@ -45,7 +45,7 @@ def cmd_stop(message):
     global bot_enabled
     bot_enabled = False
     bot.reply_to(message, "Понял, умолк.")
-    time.sleep(10)
+    time.sleep(7)
     bot.reply_to(message, "Пидоры :(")
     cancel_jobs()
 
