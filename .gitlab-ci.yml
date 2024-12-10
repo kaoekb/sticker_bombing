@@ -1,0 +1,35 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_DRIVER: overlay2
+  IMAGE_NAME: telegram-bot
+
+before_script:
+  - docker info
+
+build:
+  stage: build
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME .
+  only:
+    - main
+    - dev
+
+test:
+  stage: test
+  script:
+    - pip install -r requirements.txt
+    # - pytest tests  # если у вас есть папка с тестами
+  only:
+    - main
+    - dev
+
+deploy:
+  stage: deploy
+  script:
+    - docker-compose -f docker-compose.yml up -d
+  only:
+    - main
