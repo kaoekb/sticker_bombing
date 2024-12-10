@@ -1,12 +1,9 @@
 import logging
-import datetime
 import os
-from aiogram import Bot, Dispatcher, types
-from aiogram.contrib.middlewares.logging import LoggingMiddleware
-from aiogram.utils import executor
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.daily import DailyTrigger
-from dotenv import load_dotenv  # Импортируем для работы с .env
+import telebot
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from dotenv import load_dotenv
 
 # Загружаем переменные из .env файла
 load_dotenv()
@@ -20,64 +17,75 @@ API_TOKEN = os.getenv('TELEGRAM_API_TOKEN')
 GROUP_CHAT_ID = os.getenv('GROUP_CHAT_ID')
 
 # ID стикеров для утреннего и вечернего времени
-MORNING_STICKER_ID = 'CAACAgIAAxkBAAEBhNJg1DZH_G7ZB_cfwZDPOz5uxtGG2gAC2gAD6SK7Io_OwVmx5n7-VwQ'
-EVENING_STICKER_ID = 'CAACAgIAAxkBAAEBhNpZ1DZH_G7_ZLcFb8t6E0MwHeQZ8gAC0QAD6SK7Io_OwVmx5n7-VwQ'
+MORNING_STICKER_ID = os.getenv('MORNING_STICKER_ID')
+EVENING_STICKER_ID = os.getenv('EVENING_STICKER_ID')
 
 # Состояние бота
 bot_enabled = False
 
-# Создаем объекты бота и диспетчера
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot)
-dp.middleware.setup(LoggingMiddleware())
+# Создаем объект бота
+bot = telebot.TeleBot(API_TOKEN)
 
 # Инициализация планировщика
-scheduler = AsyncIOScheduler()
+scheduler = BackgroundScheduler()
+scheduler_started = False  # Флаг, который будет указывать, что планировщик уже запущен
 
 # Команда для включения бота
-@dp.message_handler(commands=['start'])
-async def cmd_start(message: types.Message):
+@bot.message_handler(commands=['start'])
+def cmd_start(message):
     global bot_enabled
     bot_enabled = True
-    await message.reply("Бот активирован! Я буду присылать стикеры каждое утро и вечер.")
+    bot.reply_to(message, "Бот активирован! Я буду присылать стикеры каждое утро и вечер.")
     schedule_jobs()
 
 # Команда для отключения бота
-@dp.message_handler(commands=['stop'])
-async def cmd_stop(message: types.Message):
+@bot.message_handler(commands=['stop'])
+def cmd_stop(message):
     global bot_enabled
     bot_enabled = False
-    await message.reply("Бот деактивирован. Я больше не буду присылать стикеры.")
+    bot.reply_to(message, "Бот деактивирован. Я больше не буду присылать стикеры.")
     cancel_jobs()
 
-# Функция отправки утреннего стикера
-async def send_morning_sticker():
+def send_morning_sticker():
     if bot_enabled:
-        # Отправляем стикер в группу
-        await bot.send_sticker(chat_id=GROUP_CHAT_ID, sticker=MORNING_STICKER_ID)
+        try:
+            bot.send_sticker(chat_id=GROUP_CHAT_ID, sticker=MORNING_STICKER_ID)
+            logger.info("Утренний стикер успешно отправлен!")
+        except Exception as e:
+            logger.error(f"Ошибка при отправке утреннего стикера: {e}")
 
-# Функция отправки вечернего стикера
-async def send_evening_sticker():
+def send_evening_sticker():
     if bot_enabled:
-        # Отправляем стикер в группу
-        await bot.send_sticker(chat_id=GROUP_CHAT_ID, sticker=EVENING_STICKER_ID)
+        try:
+            bot.send_sticker(chat_id=GROUP_CHAT_ID, sticker=EVENING_STICKER_ID)
+            logger.info("Вечерний стикер успешно отправлен!")
+        except Exception as e:
+            logger.error(f"Ошибка при отправке вечернего стикера: {e}")
 
 # Планирование задач (утренний и вечерний стикеры)
 def schedule_jobs():
-    now = datetime.datetime.now()
-    morning_trigger = DailyTrigger(hour=7, minute=0, second=0, timezone='UTC')
-    evening_trigger = DailyTrigger(hour=19, minute=0, second=0, timezone='UTC')
+    global scheduler_started
 
-    # Запускаем задачи
-    scheduler.add_job(send_morning_sticker, morning_trigger)
-    scheduler.add_job(send_evening_sticker, evening_trigger)
-    scheduler.start()
+    if not scheduler_started:
+        # Используем CronTrigger для задания времени
+        morning_trigger = CronTrigger(hour=7, minute=0, second=0, timezone='Europe/Moscow')  # Утренний стикер
+        evening_trigger = CronTrigger(hour=20, minute=29, second=0, timezone='Europe/Moscow')  # Вечерний стикер
+
+        # Запускаем задачи
+        scheduler.add_job(send_morning_sticker, morning_trigger)
+        scheduler.add_job(send_evening_sticker, evening_trigger)
+
+        scheduler.start()  # Запускаем планировщик, если еще не был запущен
+        scheduler_started = True
+        logger.info("Планировщик был запущен.")
 
 # Отмена всех запланированных задач
 def cancel_jobs():
     scheduler.remove_all_jobs()
 
-# Основная функция
+# Основная функция для запуска бота
+def main():
+    bot.polling(none_stop=True)
+
 if __name__ == '__main__':
-    # Запускаем бота
-    executor.start_polling(dp, skip_updates=True)
+    main()

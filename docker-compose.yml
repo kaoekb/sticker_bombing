@@ -10,5 +10,3 @@ services:
       - GROUP_CHAT_ID=${GROUP_CHAT_ID}
     volumes:
       - .:/app
-    ports:
-      - "5000:5000"
