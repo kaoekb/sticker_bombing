@@ -43,7 +43,8 @@ def cmd_start(message):
 def cmd_stop(message):
     global bot_enabled
     bot_enabled = False
-    bot.reply_to(message, "Бот деактивирован. Я больше не буду присылать стикеры.")
+    bot.reply_to(message, "Понял, умолк.")
+    bot.reply_to(message, "Пидоры :(")
     cancel_jobs()
 
 def send_morning_sticker():
@@ -68,8 +69,8 @@ def schedule_jobs():
 
     if not scheduler_started:
         # Используем CronTrigger для задания времени
-        morning_trigger = CronTrigger(hour=0, minute=34, second=0, timezone='Europe/Moscow')  # Утренний стикер
-        evening_trigger = CronTrigger(hour=22, minute=24, second=0, timezone='Europe/Moscow')  # Вечерний стикер
+        morning_trigger = CronTrigger(hour=7, minute=0, second=0, timezone='Europe/Moscow')  # Утренний стикер
+        evening_trigger = CronTrigger(hour=18, minute=00, second=0, timezone='Europe/Moscow')  # Вечерний стикер
 
         # Запускаем задачи
         scheduler.add_job(send_morning_sticker, morning_trigger)
