@@ -3,10 +3,12 @@ version: "3.8"
 services:
   bot:
     build: .
-    container_name: telegram_bot
+    container_name: Duck_bot
     restart: always
     environment:
       - TELEGRAM_API_TOKEN=${TELEGRAM_API_TOKEN}
       - GROUP_CHAT_ID=${GROUP_CHAT_ID}
+      - MORNING_STICKER_ID=${MORNING_STICKER_ID}
+      - EVENING_STICKER_ID=${EVENING_STICKER_ID}
     volumes:
       - .:/app
