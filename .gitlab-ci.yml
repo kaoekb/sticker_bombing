@@ -7,9 +7,6 @@ build:
   stage: build
   script:
     - docker build -t duck_bot .
-  only:
-    - main
-    - dev
 
 test:
   stage: test
@@ -25,5 +22,3 @@ deploy:
   stage: deploy
   script:
     - docker-compose -f docker-compose.yml up -d
-  only:
-    - main
