@@ -6,19 +6,15 @@ stages:
 build:
   stage: build
   script:
-    - docker build --no-cache -t duck_bot .
+    - docker build --no-cache -t duck_bot:$CI_COMMIT_SHA .
 
 test:
   stage: test
   script:
     echo "test"
-  #   - pip install -r requirements.txt
-  #   # - pytest tests  # если у вас есть папка с тестами
-  # only:
-  #   - main
-  #   - dev
+    
 
 deploy:
   stage: deploy
   script:
-    - docker-compose -f docker-compose.yml up -d
+    - docker-compose -f docker-compose.yml up --build -d
