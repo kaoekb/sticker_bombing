@@ -4,7 +4,6 @@ services:
   duck_bot:
     build:
       context: .
-    # container_name: Duck_bot
     environment:
       - TELEGRAM_API_TOKEN=${TELEGRAM_API_TOKEN}
       - GROUP_CHAT_ID=${GROUP_CHAT_ID}
