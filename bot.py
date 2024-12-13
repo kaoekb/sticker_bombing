@@ -6,6 +6,8 @@ import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
+from random
+
 
 # Загружаем переменные из .env файла
 load_dotenv()
@@ -35,6 +37,14 @@ START_MESSAGE = config['bot']['messages']['start_message']
 STOP_MESSAGE = config['bot']['messages']['stop_message']
 STOP_FOLLOW_UP = config['bot']['messages']['stop_follow_up']
 HELP_MESSAGE = config['bot']['messages']['help_message']
+
+def load_memes():
+    with open("memes.yaml", "r", encoding="utf-8") as file:
+        data = yaml.safe_load(file)
+    return data['memes']
+
+memes = load_memes()
+
 
 # Состояние бота
 bot_enabled = config['bot']['enabled']
@@ -117,6 +127,12 @@ def handle_message(message):
     if bot_enabled:
         bot.send_message(chat_id, HELP_MESSAGE)
     # Здесь можно добавить логику по обработке других типов сообщений
+
+@bot.message_handler(commands=['quote'])
+def cmd_quote(message):
+    quote = random.choice(memes)
+    bot.reply_to(message, quote)
+
 
 # Основная функция для запуска бота
 def main():
