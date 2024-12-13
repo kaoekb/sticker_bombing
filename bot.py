@@ -52,7 +52,7 @@ def cmd_start(message):
     global bot_enabled
     bot_enabled = True
     bot.reply_to(message, START_MESSAGE)
-    schedule_jobs()
+    schedule_jobs(message.chat.id)  # Передаем chat_id для планировщика
 
 # Команда для отключения бота
 @bot.message_handler(commands=['stop'])
@@ -65,7 +65,7 @@ def cmd_stop(message):
     cancel_jobs()
 
 def send_morning_sticker(chat_id):
-    logger.info("Попытка отправить утренний стикер...")
+    logger.info(f"Попытка отправить утренний стикер в чат {chat_id}...")
     if bot_enabled:
         try:
             bot.send_sticker(chat_id=chat_id, sticker=MORNING_STICKER_ID)
@@ -74,7 +74,7 @@ def send_morning_sticker(chat_id):
             logger.error(f"Ошибка при отправке утреннего стикера в чат {chat_id}: {e}")
 
 def send_evening_sticker(chat_id):
-    logger.info("Попытка отправить вечерний стикер...")
+    logger.info(f"Попытка отправить вечерний стикер в чат {chat_id}...")
     if bot_enabled:
         try:
             bot.send_sticker(chat_id=chat_id, sticker=EVENING_STICKER_ID)
@@ -83,7 +83,7 @@ def send_evening_sticker(chat_id):
             logger.error(f"Ошибка при отправке вечернего стикера в чат {chat_id}: {e}")
 
 # Планирование задач (утренний и вечерний стикеры)
-def schedule_jobs():
+def schedule_jobs(chat_id):
     global scheduler_started
 
     if not scheduler_started:
@@ -98,9 +98,9 @@ def schedule_jobs():
                                       second=int(EVENING_TIME.split(':')[2]), 
                                       timezone=TIMEZONE)  # Вечерний стикер
 
-        # Запускаем задачи
-        scheduler.add_job(send_morning_sticker, morning_trigger, args=['{chat_id}'])
-        scheduler.add_job(send_evening_sticker, evening_trigger, args=['{chat_id}'])
+        # Запускаем задачи с передачей chat_id
+        scheduler.add_job(send_morning_sticker, morning_trigger, args=[chat_id])
+        scheduler.add_job(send_evening_sticker, evening_trigger, args=[chat_id])
 
         scheduler.start()  # Запускаем планировщик, если еще не был запущен
         scheduler_started = True
