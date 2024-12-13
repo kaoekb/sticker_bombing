@@ -119,13 +119,18 @@ def schedule_jobs(chat_id):
 def cancel_jobs():
     scheduler.remove_all_jobs()
 
-# Обработчик сообщений, который получает chat_id
-@bot.message_handler(func=lambda message: True)
-def handle_message(message):
+@bot.message_handler(commands=['help'])
+def cmd_help(message):
     chat_id = message.chat.id  # Получаем chat_id из сообщения
     if bot_enabled:
         bot.send_message(chat_id, HELP_MESSAGE)
     # Здесь можно добавить логику по обработке других типов сообщений
+
+def cmd_start(message):
+    global bot_enabled
+    bot_enabled = True
+    bot.reply_to(message, START_MESSAGE)
+    schedule_jobs(message.chat.id)  # Передаем chat_id для планировщика
 
 # @bot.message_handler(commands=['quote'])
 # def cmd_quote(message):
