@@ -2,19 +2,29 @@ stages:
   - build
   - test
   - deploy
+  - cleanup
 
 build:
   stage: build
   script:
-    - docker build --no-cache -t duck_bot:$CI_COMMIT_SHA .
+    # Собираем новый образ с тегом, основанным на коммите
+    - docker build -t your_image_name:$CI_COMMIT_SHA .
+    - docker tag your_image_name:$CI_COMMIT_SHA your_image_name:latest  # Дополнительный тег для latest
 
 test:
   stage: test
   script:
     echo "test"
-    
 
 deploy:
   stage: deploy
   script:
     - docker-compose -f docker-compose.yml up --build -d
+
+cleanup:
+  stage: cleanup
+  script:
+    # Удаляем неиспользуемые образы с тегом <none>
+    - docker rmi $(docker images -f "dangling=true" -q) || true
+    # Также можно удалить образы, не используемые контейнерами
+    - docker image prune -a -f
