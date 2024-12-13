@@ -3,11 +3,10 @@ import os
 import time
 import telebot
 import yaml
+import random
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
-from random
-
 
 # Загружаем переменные из .env файла
 load_dotenv()
