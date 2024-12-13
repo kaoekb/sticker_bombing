@@ -65,6 +65,7 @@ def cmd_stop(message):
     cancel_jobs()
 
 def send_morning_sticker(chat_id):
+    logger.info("Попытка отправить утренний стикер...")
     if bot_enabled:
         try:
             bot.send_sticker(chat_id=chat_id, sticker=MORNING_STICKER_ID)
@@ -73,6 +74,7 @@ def send_morning_sticker(chat_id):
             logger.error(f"Ошибка при отправке утреннего стикера в чат {chat_id}: {e}")
 
 def send_evening_sticker(chat_id):
+    logger.info("Попытка отправить вечерний стикер...")
     if bot_enabled:
         try:
             bot.send_sticker(chat_id=chat_id, sticker=EVENING_STICKER_ID)
