@@ -1,0 +1,16 @@
+telegram:
+  morning_sticker_id: "CAACAgIAAyEFAASN5JM8AAMJZ1h0vMLxPI4T2KAhETvP2s5p5dUAAnFgAAKb0sFK831_bebLrwI2BA"
+  evening_sticker_id: "CAACAgIAAyEFAASN5JM8AAMKZ1h054QimWlcU2-9U5BSKGNK-WoAAmFlAANsyUoZFTth8kcaoTYE"
+
+scheduler:
+  morning_time: "07:00:00"  # Время утреннего стикера (часы:минуты:секунды)
+  evening_time: "18:00:00"  # Время вечернего стикера (часы:минуты:секунды)
+  timezone: "Europe/Moscow"
+
+bot:
+  enabled: true  # Статус бота (включен/выключен)
+  messages:
+    start_message: "Бот активен, епта!"  # Сообщение для команды /start
+    stop_message: "Понял, умолк."  # Сообщение для команды /stop
+    stop_follow_up: "Пидоры :("  # Последующее сообщение после остановки бота
+    help_message: "Я тут, чем могу помочь?"  # Сообщение, которое бот будет отправлять по запросу "help"
