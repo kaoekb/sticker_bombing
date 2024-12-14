@@ -1,145 +1,219 @@
 import logging
 import os
-import time
-import telebot
-import yaml
 import random
-from apscheduler.schedulers.background import BackgroundScheduler
+import asyncio
+from typing import Dict, Any
+
+import telebot
+from telebot.async_telebot import AsyncTeleBot
+import yaml
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
 
 # Загружаем переменные из .env файла
 load_dotenv()
 
-# Включаем логирование для удобства отладки
-logging.basicConfig(level=logging.INFO)
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+    handlers=[
+        logging.FileHandler("bot.log"),
+        logging.StreamHandler()
+    ]
+)
 logger = logging.getLogger(__name__)
 
-# Загружаем конфигурацию из YAML файла
-def load_config():
-    with open("config.yaml", "r", encoding="utf-8") as file:
-        return yaml.safe_load(file)
+# Функция для загрузки YAML файлов
+def load_yaml_file(filepath: str) -> Dict[str, Any]:
+    try:
+        with open(filepath, "r", encoding="utf-8") as file:
+            return yaml.safe_load(file)
+    except FileNotFoundError:
+        logger.error(f"Файл {filepath} не найден.")
+        return {}
+    except yaml.YAMLError as e:
+        logger.error(f"Ошибка при загрузке YAML файла {filepath}: {e}")
+        return {}
 
-config = load_config()
+# Загрузка конфигураций
+config = load_yaml_file("config.yaml")
+memes = load_yaml_file("memes.yaml").get('memes', [])
 
-# Извлекаем настройки из конфигурации
-API_TOKEN = os.getenv('TELEGRAM_API_TOKEN')  # API токен из .env файла
-MORNING_STICKER_ID = config['telegram']['morning_sticker_id']
-EVENING_STICKER_ID = config['telegram']['evening_sticker_id']
+# Проверка наличия необходимых разделов в config.yaml
+required_config_keys = ['telegram', 'scheduler', 'bot']
+for key in required_config_keys:
+    if key not in config:
+        logger.error(f"Отсутствует раздел '{key}' в config.yaml.")
+        exit(1)
 
-MORNING_TIME = config['scheduler']['morning_time']
-EVENING_TIME = config['scheduler']['evening_time']
-TIMEZONE = config['scheduler']['timezone']
+telegram_config = config['telegram']
+scheduler_config = config['scheduler']
+bot_config = config['bot']
 
-# Сообщения для команд
-START_MESSAGE = config['bot']['messages']['start_message']
-STOP_MESSAGE = config['bot']['messages']['stop_message']
-STOP_FOLLOW_UP = config['bot']['messages']['stop_follow_up']
-HELP_MESSAGE = config['bot']['messages']['help_message']
+# Получение API токена
+API_TOKEN = os.getenv('TELEGRAM_API_TOKEN')
+if not API_TOKEN:
+    logger.error("Отсутствует TELEGRAM_API_TOKEN в .env файле.")
+    exit(1)
 
-def load_memes():
-    with open("memes.yaml", "r", encoding="utf-8") as file:
-        data = yaml.safe_load(file)
-    return data['memes']
+# Получение настроек из config.yaml
+MORNING_STICKER_ID = telegram_config.get('morning_sticker_id')
+EVENING_STICKER_ID = telegram_config.get('evening_sticker_id')
+MORNING_TIME = scheduler_config.get('morning_time', "07:00:00")
+EVENING_TIME = scheduler_config.get('evening_time', "18:53:00")
+TIMEZONE = scheduler_config.get('timezone', "Europe/Moscow")
 
-memes = load_memes()
+START_MESSAGE = bot_config.get('messages', {}).get('start_message')
+STOP_MESSAGE = bot_config.get('messages', {}).get('stop_message')
+STOP_FOLLOW_UP = bot_config.get('messages', {}).get('stop_follow_up')
+HELP_MESSAGE = bot_config.get('messages', {}).get('help_message')
 
+# Проверка наличия всех необходимых сообщений
+if not all([START_MESSAGE, STOP_MESSAGE, STOP_FOLLOW_UP, HELP_MESSAGE]):
+    logger.error("Некоторые сообщения отсутствуют в config.yaml.")
+    exit(1)
 
-# Состояние бота
-bot_enabled = config['bot']['enabled']
+# Проверка глобального статуса бота
+BOT_ENABLED = bot_config.get('enabled', False)
 
-# Создаем объект бота
-bot = telebot.TeleBot(API_TOKEN)
+class TelegramBot:
+    def __init__(self, token: str):
+        self.bot = AsyncTeleBot(token, parse_mode=None)
+        self.scheduler = AsyncIOScheduler()
+        self.scheduler.start()
+        self.user_jobs: Dict[int, Dict[str, Any]] = {}  # chat_id -> job_ids
 
-# Инициализация планировщика
-scheduler = BackgroundScheduler()
-scheduler_started = False  # Флаг, который будет указывать, что планировщик еще не запущен
+        # Регистрируем обработчики
+        self.bot.message_handler(commands=['start'])(self.cmd_start)
+        self.bot.message_handler(commands=['stop'])(self.cmd_stop)
+        self.bot.message_handler(commands=['help'])(self.cmd_help)
+        self.bot.message_handler(func=lambda message: True)(self.handle_message)
 
-# Команда для включения бота
-@bot.message_handler(commands=['start'])
-def cmd_start(message):
-    global bot_enabled
-    bot_enabled = True
-    bot.reply_to(message, START_MESSAGE)
-    schedule_jobs(message.chat.id)  # Передаем chat_id для планировщика
+    async def cmd_start(self, message):
+        if not BOT_ENABLED:
+            await self.bot.send_message(message.chat.id, "Бот в данный момент отключен.")
+            return
 
-# Команда для отключения бота
-@bot.message_handler(commands=['stop'])
-def cmd_stop(message):
-    global bot_enabled
-    bot_enabled = False
-    bot.reply_to(message, STOP_MESSAGE)
-    time.sleep(7)
-    bot.reply_to(message, STOP_FOLLOW_UP)
-    cancel_jobs()
+        chat_id = message.chat.id
+        if chat_id in self.user_jobs:
+            await self.bot.send_message(chat_id, "Бот уже запущен.")
+            return
 
-def send_morning_sticker(chat_id):
-    logger.info(f"Попытка отправить утренний стикер в чат {chat_id}...")
-    if bot_enabled:
+        await self.bot.send_message(chat_id, START_MESSAGE)
+        self.schedule_jobs(chat_id)
+        logger.info(f"Бот запущен для чата {chat_id}.")
+
+    async def cmd_stop(self, message):
+        if not BOT_ENABLED:
+            await self.bot.send_message(message.chat.id, "Бот в данный момент отключен.")
+            return
+
+        chat_id = message.chat.id
+        if chat_id not in self.user_jobs:
+            await self.bot.send_message(chat_id, "Бот не запущен.")
+            return
+
+        self.cancel_jobs(chat_id)
+        await self.bot.send_message(chat_id, STOP_MESSAGE)
+        await asyncio.sleep(7)
+        await self.bot.send_message(chat_id, STOP_FOLLOW_UP)
+        logger.info(f"Бот остановлен для чата {chat_id}.")
+
+    async def cmd_help(self, message):
+        if not BOT_ENABLED:
+            await self.bot.send_message(message.chat.id, "Бот в данный момент отключен.")
+            return
+
+        chat_id = message.chat.id
+        if chat_id in self.user_jobs:
+            await self.bot.send_message(chat_id, HELP_MESSAGE)
+        else:
+            await self.bot.send_message(chat_id, "Бот не запущен. Используйте /start для запуска.")
+
+    async def handle_message(self, message):
+        if not BOT_ENABLED:
+            return  # Игнорируем все сообщения, если бот отключен
+
+        chat_id = message.chat.id
+        if chat_id in self.user_jobs:
+            if memes:
+                random_meme = random.choice(memes)
+                await self.bot.send_message(chat_id, random_meme)
+            else:
+                await self.bot.send_message(chat_id, "Мемы отсутствуют.")
+        else:
+            await self.bot.send_message(chat_id, "Бот не запущен. Используйте /start для запуска.")
+
+    def schedule_jobs(self, chat_id: int):
+        morning_hour, morning_minute, morning_second = map(int, MORNING_TIME.split(':'))
+        evening_hour, evening_minute, evening_second = map(int, EVENING_TIME.split(':'))
+
+        morning_trigger = CronTrigger(
+            hour=morning_hour,
+            minute=morning_minute,
+            second=morning_second,
+            timezone=TIMEZONE
+        )
+        evening_trigger = CronTrigger(
+            hour=evening_hour,
+            minute=evening_minute,
+            second=evening_second,
+            timezone=TIMEZONE
+        )
+
+        morning_job = self.scheduler.add_job(
+            self.send_morning_sticker,
+            morning_trigger,
+            args=[chat_id],
+            id=f"morning_sticker_{chat_id}"
+        )
+        evening_job = self.scheduler.add_job(
+            self.send_evening_sticker,
+            evening_trigger,
+            args=[chat_id],
+            id=f"evening_sticker_{chat_id}"
+        )
+
+        self.user_jobs[chat_id] = {
+            'morning_job': morning_job,
+            'evening_job': evening_job
+        }
+        logger.info(f"Запланированы утренний и вечерний стикеры для чата {chat_id}.")
+
+    def cancel_jobs(self, chat_id: int):
+        jobs = self.user_jobs.get(chat_id)
+        if jobs:
+            for job in jobs.values():
+                job.remove()
+            del self.user_jobs[chat_id]
+            logger.info(f"Запланированные задачи отменены для чата {chat_id}.")
+
+    async def send_morning_sticker(self, chat_id: int):
+        logger.info(f"Отправка утреннего стикера в чат {chat_id}...")
         try:
-            bot.send_sticker(chat_id=chat_id, sticker=MORNING_STICKER_ID)
-            logger.info(f"Утренний стикер успешно отправлен в чат {chat_id}!")
+            await self.bot.send_sticker(chat_id, MORNING_STICKER_ID)
+            logger.info(f"Утренний стикер отправлен в чат {chat_id}.")
         except Exception as e:
             logger.error(f"Ошибка при отправке утреннего стикера в чат {chat_id}: {e}")
 
-def send_evening_sticker(chat_id):
-    logger.info(f"Попытка отправить вечерний стикер в чат {chat_id}...")
-    if bot_enabled:
+    async def send_evening_sticker(self, chat_id: int):
+        logger.info(f"Отправка вечернего стикера в чат {chat_id}...")
         try:
-            bot.send_sticker(chat_id=chat_id, sticker=EVENING_STICKER_ID)
-            logger.info(f"Вечерний стикер успешно отправлен в чат {chat_id}!")
+            await self.bot.send_sticker(chat_id, EVENING_STICKER_ID)
+            logger.info(f"Вечерний стикер отправлен в чат {chat_id}.")
         except Exception as e:
             logger.error(f"Ошибка при отправке вечернего стикера в чат {chat_id}: {e}")
 
-# Планирование задач (утренний и вечерний стикеры)
-def schedule_jobs(chat_id):
-    global scheduler_started
+    def run(self):
+        if not BOT_ENABLED:
+            logger.info("Бот отключен в конфигурации и не будет запущен.")
+            return
 
-    if not scheduler_started:
-        # Используем CronTrigger для задания времени
-        morning_trigger = CronTrigger(hour=int(MORNING_TIME.split(':')[0]), 
-                                      minute=int(MORNING_TIME.split(':')[1]), 
-                                      second=int(MORNING_TIME.split(':')[2]), 
-                                      timezone=TIMEZONE)  # Утренний стикер
-
-        evening_trigger = CronTrigger(hour=int(EVENING_TIME.split(':')[0]), 
-                                      minute=int(EVENING_TIME.split(':')[1]), 
-                                      second=int(EVENING_TIME.split(':')[2]), 
-                                      timezone=TIMEZONE)  # Вечерний стикер
-
-        # Запускаем задачи с передачей chat_id
-        scheduler.add_job(send_morning_sticker, morning_trigger, args=[chat_id])
-        scheduler.add_job(send_evening_sticker, evening_trigger, args=[chat_id])
-
-        scheduler.start()  # Запускаем планировщик, если еще не был запущен
-        scheduler_started = True
-        logger.info("Планировщик был запущен.")
-
-# Отмена всех запланированных задач
-def cancel_jobs():
-    scheduler.remove_all_jobs()
-
-@bot.message_handler(commands=['help'])
-def cmd_help(message):
-    chat_id = message.chat.id  # Получаем chat_id из сообщения
-    if bot_enabled:
-        bot.send_message(chat_id, HELP_MESSAGE)
-    # Здесь можно добавить логику по обработке других типов сообщений
-
-
-@bot.message_handler(func=lambda message: True)
-def handle_message(message):
-    chat_id = message.chat.id  # Получаем chat_id из сообщения
-    if bot_enabled:
-        # Отправляем случайный мем вместо HELP_MESSAGE
-        random_meme = random.choice(memes)
-        bot.send_message(chat_id, random_meme)
-
-
-
-# Основная функция для запуска бота
-def main():
-    bot.polling(none_stop=True)
+        logger.info("Бот запускается...")
+        asyncio.run(self.bot.polling())
 
 if __name__ == '__main__':
-    main()
+    telegram_bot = TelegramBot(API_TOKEN)
+    telegram_bot.run()
