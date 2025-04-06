@@ -1,45 +1,19 @@
-image: docker:20.10.16
-
-services:
-  - docker:20.10.16-dind
-
-variables:
-  DOCKER_TLS_CERTDIR: ""
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_DRIVER: overlay2
-
 stages:
   - build
   - test
   - deploy
-  - cleanup
 
-before_script:
-  - apk add --no-cache docker-compose
-  - docker info
-
-build:
+build-job:
   stage: build
   script:
-    - docker build -t your_image_name:$CI_COMMIT_SHA .
-    - docker tag your_image_name:$CI_COMMIT_SHA your_image_name:latest
+    docker build -t sticker_bombing .
 
-test:
+test-job:
   stage: test
   script:
-    - echo "Running tests..."
-    - docker run --rm your_image_name:$CI_COMMIT_SHA your_test_command || echo "No tests defined."
+    echo "test"
 
-deploy:
+deploy-job:
   stage: deploy
   script:
-    - export TELEGRAM_API_TOKEN=${TELEGRAM_API_TOKEN}
-    - export MORNING_STICKER_ID=${MORNING_STICKER_ID}
-    - export EVENING_STICKER_ID=${EVENING_STICKER_ID}
-    - docker-compose -f docker-compose.yml up --build -d
-
-cleanup:
-  stage: cleanup
-  script:
-    - docker rmi $(docker images -f "dangling=true" -q) || true
-    - docker image prune -a -f
+    docker-compose up -d
