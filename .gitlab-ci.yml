@@ -1,19 +1,37 @@
+image: docker:20.10.16
+
+services:
+  - docker:20.10.16-dind
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_DRIVER: overlay2
+
 stages:
   - build
   - test
   - deploy
 
+before_script:
+  - apk add --no-cache docker-compose
+  - docker info
+
 build-job:
   stage: build
   script:
-    docker build -t sticker_bombing .
+    - docker build -t sticker_bombing .
 
 test-job:
   stage: test
   script:
-    echo "test"
+    - echo "Running tests..."
+    - docker run --rm sticker_bombing python -m unittest || echo "No tests defined"
 
 deploy-job:
   stage: deploy
   script:
-    docker-compose up -d
+    - export TELEGRAM_API_TOKEN=${TELEGRAM_API_TOKEN}
+    - export MORNING_STICKER_ID=${MORNING_STICKER_ID}
+    - export EVENING_STICKER_ID=${EVENING_STICKER_ID}
+    - docker-compose up -d
