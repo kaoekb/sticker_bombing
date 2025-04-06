@@ -62,7 +62,7 @@ if not API_TOKEN:
 MORNING_STICKER_ID = telegram_config.get('morning_sticker_id')
 EVENING_STICKER_ID = telegram_config.get('evening_sticker_id')
 MORNING_TIME = scheduler_config.get('morning_time', "07:00:00")
-EVENING_TIME = scheduler_config.get('evening_time', "23:35:00")
+EVENING_TIME = scheduler_config.get('evening_time', "20:56:00")
 TIMEZONE = scheduler_config.get('timezone', "Europe/Moscow")
 
 START_MESSAGE = bot_config.get('messages', {}).get('start_message')
