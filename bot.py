@@ -11,7 +11,7 @@ from apscheduler.triggers.cron import CronTrigger
 
 # Настройки
 CONFIG_PATH = "config.yaml"
-ADMIN_IDS = [123456789]  # Замените на свой Telegram ID
+ADMIN_IDS = [273792356]  # Замените на свой Telegram ID
 
 # Логирование
 logging.basicConfig(level=logging.INFO)
