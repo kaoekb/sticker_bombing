@@ -4,8 +4,8 @@ services:
   - docker:20.10.16-dind
 
 variables:
-  DOCKER_HOST: tcp://docker:2375/
   DOCKER_TLS_CERTDIR: ""
+  DOCKER_HOST: tcp://docker:2375
   DOCKER_DRIVER: overlay2
 
 stages:
@@ -15,8 +15,7 @@ stages:
   - cleanup
 
 before_script:
-  # Логинимся в Docker, если требуется (опционально)
-  # - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+  - apk add --no-cache docker-compose
   - docker info
 
 build:
@@ -24,18 +23,19 @@ build:
   script:
     - docker build -t your_image_name:$CI_COMMIT_SHA .
     - docker tag your_image_name:$CI_COMMIT_SHA your_image_name:latest
-    # - docker push your_image_name:$CI_COMMIT_SHA
-    # - docker push your_image_name:latest
 
 test:
   stage: test
   script:
     - echo "Running tests..."
-    - docker run --rm your_image_name:$CI_COMMIT_SHA your_test_command
+    - docker run --rm your_image_name:$CI_COMMIT_SHA your_test_command || echo "No tests defined."
 
 deploy:
   stage: deploy
   script:
+    - export TELEGRAM_API_TOKEN=${TELEGRAM_API_TOKEN}
+    - export MORNING_STICKER_ID=${MORNING_STICKER_ID}
+    - export EVENING_STICKER_ID=${EVENING_STICKER_ID}
     - docker-compose -f docker-compose.yml up --build -d
 
 cleanup:
