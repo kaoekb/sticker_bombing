@@ -3,8 +3,8 @@ telegram:
   evening_sticker_id: "CAACAgIAAyEFAASN5JM8AAMKZ1h054QimWlcU2-9U5BSKGNK-WoAAmFlAANsyUoZFTth8kcaoTYE"
 
 scheduler:
-  morning_time: "21:00:00"
-  evening_time: "20:59:00"
+  morning_time: "20:07:00"
+  evening_time: "20:08:00"
   timezone: "Europe/Moscow"
 
 bot:
