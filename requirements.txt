@@ -4,3 +4,4 @@ python-dotenv==0.21.1
 pyyaml
 aiohttp>=3.8.0
 tzdata
+setuptools

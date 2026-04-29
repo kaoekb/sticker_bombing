@@ -4,6 +4,7 @@ import asyncio
 import logging
 import random
 import time
+from types import SimpleNamespace
 from typing import Iterable
 
 from apscheduler.jobstores.base import JobLookupError
@@ -36,6 +37,7 @@ class StickerBombingApp:
         self.bot = AsyncTeleBot(settings.token, parse_mode=None)
         self.scheduler = AsyncIOScheduler(timezone=settings.scheduler.tzinfo)
         self.chat_states = self.store.load_chat_states(self.phrase_book.default_mode())
+        self.bot_user: SimpleNamespace | None = None
         self.state_lock = asyncio.Lock()
         self._register_handlers()
 
@@ -153,7 +155,7 @@ class StickerBombingApp:
         await self.bot.send_message(message.chat.id, self.settings.bot.messages.help_message)
 
     async def on_new_chat_members(self, message) -> None:
-        me = await self.bot.get_me()
+        me = await self._ensure_bot_user()
         if not any(member.id == me.id for member in message.new_chat_members):
             return
 
@@ -180,6 +182,12 @@ class StickerBombingApp:
             return
 
         now = time.time()
+        if await self._is_direct_ping(message, text):
+            if not self._can_reply(chat_state, now):
+                return
+            await self._send_random_phrase(message.chat.id, chat_state=chat_state, timestamp=now)
+            return
+
         if not self._can_reply(chat_state, now):
             return
 
@@ -227,6 +235,25 @@ class StickerBombingApp:
         if cooldown == 0:
             return True
         return now - chat_state.last_reply_at >= cooldown
+
+    async def _ensure_bot_user(self):
+        if self.bot_user is None:
+            self.bot_user = await self.bot.get_me()
+        return self.bot_user
+
+    async def _is_direct_ping(self, message, text: str) -> bool:
+        bot_user = await self._ensure_bot_user()
+
+        reply_to_message = getattr(message, "reply_to_message", None)
+        reply_author = getattr(reply_to_message, "from_user", None)
+        if reply_author and reply_author.id == bot_user.id:
+            return True
+
+        username = getattr(bot_user, "username", None)
+        if username and f"@{username.casefold()}" in text.casefold():
+            return True
+
+        return False
 
     async def _activate_chat(self, chat_id: int) -> bool:
         async with self.state_lock:
@@ -299,6 +326,7 @@ class StickerBombingApp:
             logger.info("Bot disabled in config, skipping startup.")
             return
 
+        self.bot_user = await self.bot.get_me()
         self.scheduler.start()
         self._restore_jobs()
         logger.info("Restored %s active chats", len(self.chat_states))
@@ -308,7 +336,7 @@ class StickerBombingApp:
         finally:
             if self.scheduler.running:
                 self.scheduler.shutdown(wait=False)
-            self.bot.close_session()
+            await self.bot.close_session()
 
     def run(self) -> None:
         asyncio.run(self._run())

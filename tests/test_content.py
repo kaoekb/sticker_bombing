@@ -41,5 +41,6 @@ class PhraseBookTests(unittest.TestCase):
             self.assertEqual(phrase_book.trigger_phrase("очередной дейли"), "standup survived")
 
 
+
 if __name__ == "__main__":
     unittest.main()
