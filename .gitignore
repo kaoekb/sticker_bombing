@@ -1,3 +1,11 @@
 .env
-push_both.sh
-/test
+.DS_Store
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+bot.log
+logs/
+data/*.json

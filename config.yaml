@@ -3,14 +3,17 @@ telegram:
   evening_sticker_id: "CAACAgIAAyEFAASN5JM8AAMKZ1h054QimWlcU2-9U5BSKGNK-WoAAmFlAANsyUoZFTth8kcaoTYE"
 
 scheduler:
-  morning_time: "21:00:00"  # Время утреннего стикера (часы:минуты:секунды)
-  evening_time: "20:59:00"  # Время вечернего стикера (часы:минуты:секунды)
+  morning_time: "21:00:00"
+  evening_time: "20:59:00"
   timezone: "Europe/Moscow"
 
 bot:
-  enabled: true  # Статус бота (включен/выключен)
+  enabled: true
+  reply_probability: 0.35
+  reply_cooldown_seconds: 900
+  storage_path: "data/subscriptions.json"
   messages:
-    start_message: "Бот активен, епта!"  # Сообщение для команды /start
-    stop_message: "Понял, умолк."  # Сообщение для команды /stop
-    stop_follow_up: "Пидоры :("  # Последующее сообщение после остановки бота
-    help_message: "Некультурный утка я, ругаюсь матом - называюсь @krya_fuck_bot"  # Сообщение, которое бот будет отправлять по запросу "help"
+    start_message: "Бот активен, епта!"
+    stop_message: "Понял, умолк."
+    stop_follow_up: "Пидоры :("
+    help_message: "Команды: /start, /stop, /status, /meme, /modes, /mode <имя>, /bomb. Бот шлет стикеры по расписанию, умеет менять настроение и подхватывает ключевые темы из чата."

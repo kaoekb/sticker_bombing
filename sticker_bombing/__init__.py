@@ -1,0 +1,1 @@
+"""Sticker bombing bot package."""

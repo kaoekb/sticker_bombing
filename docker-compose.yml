@@ -1,16 +1,9 @@
-version: "3.8"
-
 services:
   duck_bot:
-    image: your_image_name:${CI_COMMIT_SHA}
     build:
       context: .
-    environment:
-      - TELEGRAM_API_TOKEN=${TELEGRAM_API_TOKEN}
-      - MORNING_STICKER_ID=${MORNING_STICKER_ID}
-      - EVENING_STICKER_ID=${EVENING_STICKER_ID}
+    env_file:
+      - .env
     volumes:
-      # - .:/app
-      - ./logs:/app/logs
-    restart: always
-
+      - ./data:/app/data
+    restart: unless-stopped
