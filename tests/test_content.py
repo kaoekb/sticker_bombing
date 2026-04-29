@@ -38,7 +38,8 @@ class PhraseBookTests(unittest.TestCase):
             self.assertEqual(len(phrase_book), 2)
             self.assertIn(phrase_book.random_phrase(), {"one", "two"})
             self.assertTrue(phrase_book.has_mode("coach"))
-            self.assertEqual(phrase_book.trigger_phrase("очередной дейли"), "standup survived")
+            self.assertTrue(phrase_book.has_trigger("очередной дейли"))
+            self.assertFalse(phrase_book.has_trigger("просто случайный текст"))
 
 
 

@@ -60,18 +60,12 @@ class PhraseBook:
             return None
         return random.choice(phrases)
 
-    def trigger_phrase(self, text: str) -> str | None:
+    def has_trigger(self, text: str) -> bool:
         normalized = text.casefold()
-        matched_triggers = [
-            trigger
+        return any(
+            any(keyword in normalized for keyword in trigger.keywords)
             for trigger in self._triggers
-            if any(keyword in normalized for keyword in trigger.keywords)
-        ]
-        if not matched_triggers:
-            return None
-
-        chosen_trigger = random.choice(matched_triggers)
-        return random.choice(chosen_trigger.phrases) if chosen_trigger.phrases else None
+        )
 
     def default_mode(self) -> str:
         if "classic" in self._modes:

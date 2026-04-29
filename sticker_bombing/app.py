@@ -191,9 +191,8 @@ class StickerBombingApp:
         if not self._can_reply(chat_state, now):
             return
 
-        trigger_phrase = self.phrase_book.trigger_phrase(text)
-        if trigger_phrase:
-            await self._send_phrase(message.chat.id, trigger_phrase, chat_state, now)
+        if self.phrase_book.has_trigger(text):
+            await self._send_random_phrase(message.chat.id, chat_state=chat_state, timestamp=now)
             return
 
         if random.random() > self.settings.bot.reply_probability:
