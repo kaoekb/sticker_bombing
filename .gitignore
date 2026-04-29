@@ -9,3 +9,4 @@ __pycache__/
 bot.log
 logs/
 data/*.json
+server.md
