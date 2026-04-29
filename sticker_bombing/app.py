@@ -48,6 +48,7 @@ class StickerBombingApp:
         self.bot.message_handler(commands=["mode"])(self.cmd_mode)
         self.bot.message_handler(commands=["bomb"])(self.cmd_bomb)
         self.bot.message_handler(commands=["help"])(self.cmd_help)
+        self.bot.message_handler(content_types=["new_chat_members"])(self.on_new_chat_members)
         self.bot.message_handler(content_types=["text"], func=lambda _: True)(self.on_text_message)
 
     async def cmd_start(self, message) -> None:
@@ -56,14 +57,10 @@ class StickerBombingApp:
             return
 
         chat_id = message.chat.id
-        async with self.state_lock:
-            if chat_id in self.chat_states:
-                await self.bot.send_message(chat_id, "Я уже на посту в этом чате.")
-                return
-
-            self.chat_states[chat_id] = ChatState(mode=self.phrase_book.default_mode())
-            self.store.save_chat_states(self.chat_states)
-            self._schedule_chat(chat_id)
+        activated = await self._activate_chat(chat_id)
+        if not activated:
+            await self.bot.send_message(chat_id, "Я уже на посту в этом чате.")
+            return
 
         await self.bot.send_message(chat_id, self.settings.bot.messages.start_message)
         logger.info("Chat %s activated", chat_id)
@@ -155,6 +152,21 @@ class StickerBombingApp:
     async def cmd_help(self, message) -> None:
         await self.bot.send_message(message.chat.id, self.settings.bot.messages.help_message)
 
+    async def on_new_chat_members(self, message) -> None:
+        me = await self.bot.get_me()
+        if not any(member.id == me.id for member in message.new_chat_members):
+            return
+
+        activated = await self._activate_chat(message.chat.id)
+        if not activated:
+            return
+
+        await self.bot.send_message(
+            message.chat.id,
+            "Я в чате. Расписание включено для этой группы автоматически. Команды: /status, /modes, /mode, /stop.",
+        )
+        logger.info("Chat %s auto-activated after bot was added", message.chat.id)
+
     async def on_text_message(self, message) -> None:
         text = (message.text or "").strip()
         if not text or text.startswith("/"):
@@ -215,6 +227,16 @@ class StickerBombingApp:
         if cooldown == 0:
             return True
         return now - chat_state.last_reply_at >= cooldown
+
+    async def _activate_chat(self, chat_id: int) -> bool:
+        async with self.state_lock:
+            if chat_id in self.chat_states:
+                return False
+
+            self.chat_states[chat_id] = ChatState(mode=self.phrase_book.default_mode())
+            self.store.save_chat_states(self.chat_states)
+            self._schedule_chat(chat_id)
+            return True
 
     def _schedule_chat(self, chat_id: int) -> None:
         self.scheduler.add_job(
